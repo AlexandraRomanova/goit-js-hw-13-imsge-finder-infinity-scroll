@@ -1,1 +1,1 @@
-# goit-js-hw-13-imsge-finder-infinity-scroll
+# js-hw-13-image-finder-infinity-scroll
