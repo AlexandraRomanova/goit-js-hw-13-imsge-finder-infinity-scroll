@@ -2,29 +2,24 @@ import imageCardTpl from './templates/image-card.hbs';
 import './css/styles.css'
 import NewApiService from './js/apiService';
 
+// Плагин открытия модального окна (вовремя нажатия на картинку)
 import * as basicLightbox from 'basiclightbox';
 import 'basiclightbox/dist/basicLightbox.min.css';
 
+// Для ошибки
 import { error } from '@pnotify/core';
 import '@pnotify/core/dist/BrightTheme.css';
 import '@pnotify/core/dist/PNotify.css';
-// import LoadNMoreBtn from './js/load-more-btn';
 
 const refs = {
     searchForm: document.querySelector('.search-form'),
     galleryContainer: document.querySelector('.gallery'),
-    loadMoreBtn: document.querySelector('.btn-load-more'),
+    sentinel: document.querySelector('#sentinel'),
 }
-
-// const loadMoreBtn = new LoadNMoreBtn({
-//     selector: '[data-action="load-more"]',
-//     hidden: true,
-// })
 
 const newApiService = new NewApiService();
 
 refs.searchForm.addEventListener('submit', onSearch);
-refs.loadMoreBtn.addEventListener('click', onLoadMore)
 refs.galleryContainer.addEventListener('click', onGallaryImageClick)
 
 function onSearch(e) {
@@ -40,6 +35,7 @@ function onSearch(e) {
 
     newApiService.resetPage();
     onLoadMore();
+    newApiService.incrementPage()
 };
 
 function onLoadMore() {
@@ -47,11 +43,7 @@ function onLoadMore() {
         if (data.length === 0) {
             return onFetchError();
         }
-        refs.loadMoreBtn.classList.remove('load-more');
         addImageMarkup(data);
-        if (data.length < 12) {
-            refs.loadMoreBtn.classList.add('load-more');
-        }
     })
 }
 
@@ -59,13 +51,12 @@ function addImageMarkup(hits) {
     refs.galleryContainer.insertAdjacentHTML('beforeend', imageCardTpl(hits));
     refs.galleryContainer.scrollIntoView({
         behavior: 'smooth',
-        block: 'end',
+        block: 'start',
     });
 }
 
 function clearContainer() {
     refs.galleryContainer.innerHTML = '';
-    refs.loadMoreBtn.classList.add('load-more');
 }
 
 function onGallaryImageClick(e) {
@@ -86,3 +77,22 @@ function onFetchError() {
         delay: 2000,
     })
 }
+
+// Intersection observer (infinity scroll)
+const onEntry = entries => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting && newApiService.query !== '') {
+            newApiService.fetchImages().then(data => {
+                addImageMarkup(data);
+                newApiService.incrementPage()
+            })
+        }
+    })
+}
+
+const options = {
+    rootMargin: '170px'
+}
+
+const observer = new IntersectionObserver(onEntry, options);
+observer.observe(refs.sentinel);
